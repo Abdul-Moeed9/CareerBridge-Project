@@ -1,0 +1,193 @@
+﻿-- ============================================================
+--  CareerBridge Database
+-- ============================================================
+
+CREATE DATABASE IF NOT EXISTS careerbridge
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+USE careerbridge;
+
+-- ------------------------------------------------------------
+-- 1. Users  (base account table)
+-- ------------------------------------------------------------
+CREATE TABLE `users` (
+  `user_id`           INT           NOT NULL AUTO_INCREMENT,
+  `name`              VARCHAR(100)  NOT NULL,
+  `email`             VARCHAR(150)  NOT NULL,
+  `password_hash`     VARCHAR(255)  NOT NULL,
+  `role`              ENUM('admin','company','job_seeker') NOT NULL,
+  `account_status`    ENUM('active','deactivated','suspended') NOT NULL DEFAULT 'active',
+  `registration_date` DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (`user_id`),
+  UNIQUE KEY `email` (`email`),
+  KEY `idx_users_email` (`email`),
+  KEY `idx_users_role`  (`role`)
+) ENGINE=InnoDB
+  AUTO_INCREMENT=161
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- 2. Admins
+-- ------------------------------------------------------------
+CREATE TABLE `admins` (
+  `admin_id` INT NOT NULL AUTO_INCREMENT,
+  `user_id`  INT NOT NULL,
+
+  PRIMARY KEY (`admin_id`),
+  UNIQUE KEY `user_id` (`user_id`),
+  CONSTRAINT `admins_ibfk_1`
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB
+  AUTO_INCREMENT=2
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- 3. Job Seekers
+-- ------------------------------------------------------------
+CREATE TABLE `job_seekers` (
+  `seeker_id`      INT  NOT NULL AUTO_INCREMENT,
+  `user_id`        INT  NOT NULL,
+  `profile_status` ENUM('incomplete','complete') NOT NULL DEFAULT 'incomplete',
+
+  PRIMARY KEY (`seeker_id`),
+  UNIQUE KEY `user_id` (`user_id`),
+  CONSTRAINT `job_seekers_ibfk_1`
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB
+  AUTO_INCREMENT=10
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- 4. Profiles  (one-to-one with job_seekers)
+-- ------------------------------------------------------------
+CREATE TABLE `profiles` (
+  `profile_id`           INT           NOT NULL AUTO_INCREMENT,
+  `seeker_id`            INT           NOT NULL,
+  `education`            VARCHAR(255)  DEFAULT NULL,
+  `cgpa`                 DECIMAL(4,2)  DEFAULT NULL,
+  `skills`               TEXT          DEFAULT NULL,
+  `experience`           TEXT          DEFAULT NULL,
+  `location`             VARCHAR(150)  DEFAULT NULL,
+  `cv_file`              VARCHAR(500)  DEFAULT NULL,
+  `profile_created_date` DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `cv_text`              LONGTEXT      DEFAULT NULL,
+
+  PRIMARY KEY (`profile_id`),
+  UNIQUE KEY `seeker_id` (`seeker_id`),
+  CONSTRAINT `profiles_ibfk_1`
+    FOREIGN KEY (`seeker_id`) REFERENCES `job_seekers` (`seeker_id`) ON DELETE CASCADE,
+  CONSTRAINT `profiles_chk_1`
+    CHECK (`cgpa` >= 0.00 AND `cgpa` <= 4.00)
+) ENGINE=InnoDB
+  AUTO_INCREMENT=2
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- 5. Companies
+-- ------------------------------------------------------------
+CREATE TABLE `companies` (
+  `company_id`      INT           NOT NULL AUTO_INCREMENT,
+  `user_id`         INT           NOT NULL,
+  `company_name`    VARCHAR(150)  NOT NULL,
+  `industry`        VARCHAR(100)  DEFAULT NULL,
+  `contact_email`   VARCHAR(150)  DEFAULT NULL,
+  `approval_status` ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+
+  PRIMARY KEY (`company_id`),
+  UNIQUE KEY `user_id` (`user_id`),
+  CONSTRAINT `companies_ibfk_1`
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB
+  AUTO_INCREMENT=153
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- 6. Offerings  (jobs / internships — platform or scraped)
+-- ------------------------------------------------------------
+CREATE TABLE `offerings` (
+  `offering_id`          INT           NOT NULL AUTO_INCREMENT,
+  `company_id`           INT           DEFAULT NULL,
+  `offering_type`        ENUM('job','internship') NOT NULL,
+  `title`                VARCHAR(200)  NOT NULL,
+  `role`                 VARCHAR(150)  DEFAULT NULL,
+  `location`             VARCHAR(150)  DEFAULT NULL,
+  `required_cgpa`        DECIMAL(4,2)  DEFAULT NULL,
+  `required_experience`  VARCHAR(100)  DEFAULT NULL,
+  `stipend`              DECIMAL(12,2) DEFAULT '0.00',
+  `salary_text`          VARCHAR(255)  DEFAULT NULL
+                           COMMENT 'Original salary string from scraped dataset',
+  `job_description`      TEXT          DEFAULT NULL,
+  `posted_date`          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `posted_at_text`       VARCHAR(255)  DEFAULT NULL
+                           COMMENT 'Human-readable posted-at text e.g. 12 days ago',
+  `status`               ENUM('open','closed','draft') NOT NULL DEFAULT 'open',
+  `match_score`          DOUBLE        DEFAULT '0',
+  `company_name`         VARCHAR(150)  DEFAULT NULL
+                           COMMENT 'Denormalized for quick display from scraped jobs',
+  `url`                  VARCHAR(500)  DEFAULT NULL
+                           COMMENT 'Original listing URL from Rozee.pk',
+  `source`               ENUM('platform','scraped') NOT NULL DEFAULT 'scraped',
+
+  PRIMARY KEY (`offering_id`),
+  KEY `idx_offerings_status`  (`status`),
+  KEY `idx_offerings_location` (`location`),
+  KEY `idx_offerings_role`    (`role`),
+  KEY `idx_offerings_company` (`company_id`),
+  KEY `idx_offerings_type`    (`offering_type`),
+  CONSTRAINT `offerings_ibfk_1`
+    FOREIGN KEY (`company_id`) REFERENCES `companies` (`company_id`) ON DELETE CASCADE
+) ENGINE=InnoDB
+  AUTO_INCREMENT=539
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- 7. Applications
+-- ------------------------------------------------------------
+CREATE TABLE `applications` (
+  `application_id`   INT           NOT NULL AUTO_INCREMENT,
+  `seeker_id`        INT           NOT NULL,
+  `offering_id`      INT           NOT NULL,
+  `application_date` DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `resume_file`      VARCHAR(500)  DEFAULT NULL,
+  `status`           ENUM('pending','reviewed','shortlisted','rejected','accepted')
+                       NOT NULL DEFAULT 'pending',
+  `weighted_rank`    DOUBLE        DEFAULT '0',
+
+  PRIMARY KEY (`application_id`),
+  UNIQUE KEY `uq_application` (`seeker_id`, `offering_id`),
+  KEY `idx_applications_offering` (`offering_id`),
+  KEY `idx_applications_seeker`   (`seeker_id`),
+  KEY `idx_applications_status`   (`status`),
+  CONSTRAINT `applications_ibfk_1`
+    FOREIGN KEY (`seeker_id`)   REFERENCES `job_seekers` (`seeker_id`) ON DELETE CASCADE,
+  CONSTRAINT `applications_ibfk_2`
+    FOREIGN KEY (`offering_id`) REFERENCES `offerings`   (`offering_id`) ON DELETE CASCADE
+) ENGINE=InnoDB
+  AUTO_INCREMENT=4
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- 8. Trending Skills
+-- ------------------------------------------------------------
+CREATE TABLE `trending_skills` (
+  `trend_id`        INT          NOT NULL AUTO_INCREMENT,
+  `skill_name`      VARCHAR(100) NOT NULL,
+  `frequency`       INT          NOT NULL DEFAULT 0,
+  `calculated_date` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (`trend_id`)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+
+
+ALTER TABLE offerings MODIFY company_id INT DEFAULT NULL;

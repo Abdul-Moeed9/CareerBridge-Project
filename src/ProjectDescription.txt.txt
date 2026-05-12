@@ -1,0 +1,1044 @@
+CareerBridge
+Project team
+Abdul Moeed 24I-0720
+Naveen Aamir 24I-0744
+Hamna Bilal 24I-0794
+Section: CS – 4A
+Instructor
+Ms Afia Zafar
+Feb, 2026
+1. Project Overview
+CareerBridge is a desktop-based application designed to connect job seekers with companies
+offering internships and jobs in Pakistan. The platform provides access to authentic job listings by
+integrating Rozee.pk RSS feeds and jobdataapi.com, ensuring job seekers always see the latest
+opportunities. Companies can post verified internships, manage applications, and gain insights into
+candidate quality through analytics dashboards. Job seekers can compare their profiles with job
+requirements using AI powered match scoring, filter opportunities based on location, role,
+experience, CGPA, and stipend, and view top-ranked job recommendations.
+2. Motivation
+Finding relevant internships and entry-level jobs in Pakistan is often difficult for job seekers due
+to scattered information, outdated listings, and lack of guidance. Similarly, companies struggle to
+reach qualified candidates and filter through large numbers of applications. CareerBridge is
+motivated by the need to provide a centralized platform where job seekers can access fresh
+opportunities, receive intelligent guidance, and companies can efficiently recruit candidates. By
+combining live job feeds, AI-based matching, and interactive dashboards, the system addresses
+key challenges faced by both job seekers and employers.
+3. Objectives
+Provide job seekers with job and internship listings from verified sources.
+Implement filtering based on location, skills, CGPA, role, experience, and stipend.
+Enable profile-to-job recommendations and matching for job seekers.
+Enable whitelisted companies to post job offerings and internships.
+4. Expected Outcomes
+Job seekers browse daily job updates, receive match scores with skill gaps, and apply selectively
+using filters for location, stipend/salaries, and experience. Companies view applications, rank top
+candidates via weighted scoring, and access analytics (avg CGPA, match distribution).
+5. Project Scope
+In-Scope:
+Integration of job listings via Rozee.pk RSS feeds and jobdataapi.com.
+Registration, login, and profile creation for job seekers.
+A pre-approved whitelist of companies that can register and access dashboards for
+posting and managing internships/jobs.
+AI-powered job comparison and skill-gap analysis using Weka ML.
+Advanced job filters: location, experience, role category, CGPA, stipend.
+Out-of-Scope:
+• Messaging systems between job seekers and companies.
+• Interview scheduling or live video interviews.
+• Public company registration.
+6. Tools and Technologies
+Frontend: Java and JavaFX for dual-mode dashboards (Job seeker/Company)
+Backend: MySQL for jobs, internships, and applications.
+APIs: Rozee.pk RSS Feed and jobdataapi.com for real-time job updates.
+AI & ML: Weka library for AI match scoring and weighted candidate ranking.
+Here are all classes layer by layer with all changes integrated:
+🔧 UTILITY LAYER
+DatabaseConnection
+Attributes:
+• instance: DatabaseConnection
+• connection: Connection
+• DB_URL: String
+• DB_USER: String
+• DB_PASSWORD: String
+Methods:
++ getInstance(): DatabaseConnection
++ getConnection(): Connection
++ closeConnection(): void
++ testConnection(): boolean
+SessionManager
+Attributes:
+• instance: SessionManager
+• currentUser: User
+• loginTime: Date
+Methods:
++ getInstance(): SessionManager
++ setCurrentUser(user: User): void
++ getCurrentUser(): User
++ clearSession(): void
++ isLoggedIn(): boolean
+RSSParser (now implements IFeedFetchable)
+Attributes:
+• feedURL: String
+Methods:
++ fetch(): List<Offering> (from IFeedFetchable)
++ validate(data: String): boolean (from IFeedFetchable)
++ parse(rawData: String): List<Offering> (from IFeedFetchable)
++ fetchXML(url: String): String
+• extractField(element: Element, tag: String): String
+JobAPIClient (now implements IFeedFetchable)
+Attributes:
+• apiBaseURL: String
+• apiKey: String
+Methods:
++ fetch(): List<Offering> (from IFeedFetchable)
++ validate(data: String): boolean (from IFeedFetchable)
++ parse(rawData: String): List<Offering> (from IFeedFetchable)
+• buildRequestURL(params: Map<String, String>): String
+AnalyticsData
+Attributes:
+• avgCGPA: double
+• totalApplications: int
+• matchScoreDistribution: Map<String, Integer>
+• topSkills: List<String>
+• applicationsByOffering: Map<String, Integer>
+Methods:
++ getAvgCGPA(): double
++ getTotalApplications(): int
++ getMatchDistribution(): Map<String, Integer>
++ getTopSkills(): List<String>
++ getApplicationsByOffering(): Map<String, Integer>
+📐 INTERFACE LAYER (new)
+«interface» IFeedFetchable
+Methods:
++ fetch(): List<Offering>
++ validate(data: String): boolean
++ parse(rawData: String): List<Offering>
+Implemented by: RSSParser, JobAPIClient
+«interface» IRankable
+Methods:
++ rank(items: List<Object>): List<Object>
++ computeScore(item: Object): double
++ sortByScore(items: List<Object>): List<Object>
+Implemented by: ApplicantRanker, OfferingRanker
+«interface» IFilterable
+Methods:
++ applyFilter(items: List<Object>, criteria: Object): List<Object>
+Implemented by: FilterService
+«interface» IUserDAO
+Methods:
++ findByID(id: int): Object
++ save(obj: Object): boolean
++ update(obj: Object): boolean
++ delete(id: int): boolean
+Implemented by: UserDAO, JobSeekerDAO, CompanyDAO, ProfileDAO
+«interface» IDashboard
+Methods:
++ initialize(): void
++ loadData(): void
++ refreshView(): void
+Implemented by: JobSeekerDashboard, CompanyDashboard, AdminDashboard
+🏛️ DOMAIN LAYER
+«abstract» User
+Attributes:
+# userID: int
+# name: String
+# email: String
+# password: String
+# role: String
+# accountStatus: String
+# registrationDate: Date
+Abstract Methods:
++ login(): boolean
++ logout(): void
++ updateProfile(): void
+Concrete Methods:
++ getUserID(): int
++ getName(): String
++ getEmail(): String
++ getRole(): String
++ getAccountStatus(): String
++ setName(name: String): void
++ setEmail(email: String): void
++ setPassword(password: String): void
++ setAccountStatus(status: String): void
+Admin (extends User)
+Attributes:
+• adminID: int
+Methods:
++ login(): boolean (overrides User)
++ logout(): void (overrides User)
++ updateProfile(): void (overrides User)
++ getAdminID(): int
++ approveCompany(companyID: int): boolean
++ rejectCompany(companyID: int): boolean
++ deactivateUser(userID: int): boolean
+Company (extends User)
+Attributes:
+• companyID: int
+• companyName: String
+• industry: String
+• contactEmail: String
+• approvalStatus: String
+Methods:
++ login(): boolean (overrides User)
++ logout(): void (overrides User)
++ updateProfile(): void (overrides User)
++ getCompanyID(): int
++ getCompanyName(): String
++ getIndustry(): String
++ getApprovalStatus(): String
++ setApprovalStatus(status: String): void
++ setCompanyName(name: String): void
++ setIndustry(industry: String): void
+JobSeeker (extends User)
+Attributes:
+• seekerID: int
+• profileStatus: String
+Methods:
++ login(): boolean (overrides User)
++ logout(): void (overrides User)
++ updateProfile(): void (overrides User)
++ getSeekerID(): int
++ getProfileStatus(): String
++ setProfileStatus(status: String): void
+Profile
+Attributes:
+• profileID: int
+• education: String
+• CGPA: double
+• skills: String
+• experience: String
+• CVFile: String
+• profileCreatedDate: Date
+• seekerID: int
+Methods:
++ getProfileID(): int
++ getEducation(): String
++ getCGPA(): double
++ getSkills(): String
++ getExperience(): String
++ getCVFile(): String
++ setEducation(education: String): void
++ setCGPA(cgpa: double): void
++ setSkills(skills: String): void
++ setExperience(experience: String): void
++ setCVFile(path: String): void
+Offering
+Attributes:
+• offeringID: int
+• offeringType: String
+• title: String
+• role: String
+• location: String
+• requiredCGPA: double
+• requiredExperience: String
+• stipend: double
+• jobDescription: String
+• postedDate: Date
+• status: String
+• companyID: int
+• matchScore: double
+Methods:
++ getOfferingID(): int
++ getTitle(): String
++ getRole(): String
++ getLocation(): String
++ getRequiredCGPA(): double
++ getStipend(): double
++ getStatus(): String
++ getMatchScore(): double
++ setMatchScore(score: double): void
++ setStatus(status: String): void
++ getJobDescription(): String
++ getCompanyID(): int
+Application
+Attributes:
+• applicationID: int
+• applicationDate: Date
+• resumeFile: String
+• status: String
+• weightedRank: double
+• seekerID: int
+• offeringID: int
+Methods:
++ getApplicationID(): int
++ getStatus(): String
++ getWeightedRank(): double
++ getResumeFile(): String
++ getSeekerID(): int
++ getOfferingID(): int
++ setStatus(status: String): void
++ setWeightedRank(rank: double): void
++ setProfile(profile: Profile): void
+FilterCandidate
+Attributes:
+• position: String
+• location: String
+• role: String
+• CGPA: double
+• experience: String
+• stipend: double
+Methods:
++ getPosition(): String
++ getLocation(): String
++ getRole(): String
++ getCGPA(): double
++ getExperience(): String
++ getStipend(): double
++ setPosition(position: String): void
++ setLocation(location: String): void
++ setRole(role: String): void
++ setCGPA(cgpa: double): void
++ setExperience(experience: String): void
++ setStipend(stipend: double): void
+TrendingSkill
+Attributes:
+• trendID: int
+• skillName: String
+• frequency: int
+• calculatedDate: Date
+Methods:
++ getTrendID(): int
++ getSkillName(): String
++ getFrequency(): int
++ getCalculatedDate(): Date
++ setSkillName(name: String): void
++ setFrequency(frequency: int): void
++ setCalculatedDate(date: Date): void
+JobFeed
+Attributes:
+• source: String
+• lastFetchedDate: Date
+• rawXML: String
+• jobs: List<Offering>
+Methods:
++ getSource(): String
++ getLastFetchedDate(): Date
++ getRawXML(): String
++ getJobs(): List<Offering>
++ setLastFetchedDate(date: Date): void
++ setRawXML(xml: String): void
++ setJobs(jobs: List<Offering>): void
+«abstract» ModelTrainer
+Attributes:
+# AIModel: Object
+# trainingData: List<Object>
+# modelPath: String
+# lastTrained: Date
+Abstract Methods:
++ train(data: List<Object>): void
++ evaluate(): double
+Concrete Methods:
++ loadModel(modelPath: String): void
++ saveModel(modelPath: String): void
++ getModelPath(): String
++ getLastTrained(): Date
+# loadWekaModelFromFile(path: String): Object
+ApplicantRanker (extends ModelTrainer, implements IRankable)
+Attributes:
+• skillsWeight: double
+• cvWeight: double
+• educationWeight: double
+• matchScoreWeight: double
+Methods:
++ train(data: List<Object>): void (overrides ModelTrainer)
++ evaluate(): double (overrides ModelTrainer)
++ rank(items: List<Object>): List<Object> (from IRankable)
++ computeScore(item: Object): double (from IRankable)
++ sortByScore(items: List<Object>): List<Object> (from IRankable)
++ rankApplicantsForOffering(offeringID: int, applications: List<Application>): List<Application>
+• computeWeightedScore(application: Application): double
+• sortByDescendingRank(applications: List<Application>): List<Application>
++ getSkillsWeight(): double
++ getCvWeight(): double
++ getEducationWeight(): double
++ getMatchScoreWeight(): double
+OfferingRanker (extends ModelTrainer, implements IRankable)
+Attributes:
+• locationWeight: double
+• matchingWeight: double
+Methods:
++ train(data: List<Object>): void (overrides ModelTrainer)
++ evaluate(): double (overrides ModelTrainer)
++ rank(items: List<Object>): List<Object> (from IRankable)
++ computeScore(item: Object): double (from IRankable)
++ sortByScore(items: List<Object>): List<Object> (from IRankable)
++ rankOfferingsForSeeker(seekerID: int, offerings: List<Offering>): List<Offering>
+• computeOfferingScore(profile: Profile, offering: Offering): double
+• sortByDescendingScore(offerings: List<Offering>): List<Offering>
++ getLocationWeight(): double
++ getMatchingWeight(): double
+🗄️ DAO LAYER
+UserDAO (implements IUserDAO)
+Attributes:
+• dbConnection: DatabaseConnection
+Methods:
++ findByID(id: int): Object (from IUserDAO)
++ save(obj: Object): boolean (from IUserDAO)
++ update(obj: Object): boolean (from IUserDAO)
++ delete(id: int): boolean (from IUserDAO)
++ findByEmail(email: String): User
++ updateStatus(userID: int, status: String): boolean
++ getAllUsers(): List<User>
+JobSeekerDAO (implements IUserDAO)
+Attributes:
+• dbConnection: DatabaseConnection
+Methods:
++ findByID(id: int): Object (from IUserDAO)
++ save(obj: Object): boolean (from IUserDAO)
++ update(obj: Object): boolean (from IUserDAO)
++ delete(id: int): boolean (from IUserDAO)
++ findBySeekerID(seekerID: int): JobSeeker
+CompanyDAO (implements IUserDAO)
+Attributes:
+• dbConnection: DatabaseConnection
+Methods:
++ findByID(id: int): Object (from IUserDAO)
++ save(obj: Object): boolean (from IUserDAO)
++ update(obj: Object): boolean (from IUserDAO)
++ delete(id: int): boolean (from IUserDAO)
++ getPendingCompanies(): List<Company>
++ updateApprovalStatus(companyID: int, status: String): boolean
++ getAllCompanies(): List<Company>
+ProfileDAO (implements IUserDAO)
+Attributes:
+• dbConnection: DatabaseConnection
+Methods:
++ findByID(id: int): Object (from IUserDAO)
++ save(obj: Object): boolean (from IUserDAO)
++ update(obj: Object): boolean (from IUserDAO)
++ delete(id: int): boolean (from IUserDAO)
++ findBySeekerID(seekerID: int): Profile
+OfferingDAO
+Attributes:
+• dbConnection: DatabaseConnection
+Methods:
++ findByID(offeringID: int): Offering
++ getAll(): List<Offering>
++ getByCompany(companyID: int): List<Offering>
++ save(offering: Offering): boolean
++ update(offering: Offering): boolean
++ updateStatus(offeringID: int, status: String): boolean
++ searchByKeyword(keyword: String): List<Offering>
+ApplicationDAO
+Attributes:
+• dbConnection: DatabaseConnection
+Methods:
++ findByID(applicationID: int): Application
++ getByOffering(offeringID: int): List<Application>
++ getBySeeker(seekerID: int): List<Application>
++ save(application: Application): boolean
++ updateStatus(applicationID: int, status: String): boolean
++ updateRank(applicationID: int, rank: double): boolean
++ checkDuplicate(seekerID: int, offeringID: int): boolean
+TrendingSkillDAO
+Attributes:
+• dbConnection: DatabaseConnection
+Methods:
++ getAll(): List<TrendingSkill>
++ getTopN(n: int): List<TrendingSkill>
++ save(skill: TrendingSkill): boolean
++ clearAll(): void
++ findByName(skillName: String): TrendingSkill
+⚙️ SERVICE LAYER
+JobFeedService
+Attributes:
+• rssParser: IFeedFetchable
+• jobAPIClient: IFeedFetchable
+• lastFetchedDate: Date
+Methods:
++ fetchFromRozee(): List<Offering>
++ fetchFromJobDataAPI(): List<Offering>
+• mergeAndDeduplicate(list1: List<Offering>, list2: List<Offering>): List<Offering>
++ saveToDatabase(offerings: List<Offering>): void
++ getLastFetchedDate(): Date
+FilterService (implements IFilterable)
+Attributes:
+(none — stateless)
+Methods:
++ applyFilter(items: List<Object>, criteria: Object): List<Object> (from IFilterable)
+• filterByLocation(offerings: List<Offering>, location: String): List<Offering>
+• filterByCGPA(offerings: List<Offering>, minCGPA: double): List<Offering>
+• filterByStipend(offerings: List<Offering>, minStipend: double): List<Offering>
+• filterByExperience(offerings: List<Offering>, experience: String): List<Offering>
+• filterByRole(offerings: List<Offering>, role: String): List<Offering>
+AIMatchingService
+Attributes:
+• modelTrainer: ModelTrainer
+• applicantRanker: IRankable
+• offeringRanker: IRankable
+Methods:
++ computeMatchScore(profile: Profile, offering: Offering): double
++ identifySkillGaps(profile: Profile, offering: Offering): List<String>
++ rankOfferingsForSeeker(seekerID: int, offerings: List<Offering>): List<Offering>
++ rankApplicantsForOffering(offeringID: int): List<Application>
+TrendingSkillService
+Attributes:
+• trendingSkillDAO: TrendingSkillDAO
+• offeringDAO: OfferingDAO
+Methods:
++ computeTrendingSkills(): List<TrendingSkill>
+• extractSkillsFromOfferings(offerings: List<Offering>): Map<String, Integer>
++ saveComputedSkills(skills: List<TrendingSkill>): void
++ getTopNSkills(n: int): List<TrendingSkill>
+🎮 CONTROLLER LAYER
+AuthController (Singleton)
+Attributes:
+• instance: AuthController
+• userDAO: UserDAO
+Methods:
++ getInstance(): AuthController
++ login(email: String, password: String): User
++ register(name: String, email: String, password: String, role: String): boolean
++ logout(): void
++ deactivateAccount(userID: int): boolean
++ getCurrentUser(): User
+• hashPassword(password: String): String
+JobSeekerController
+Attributes:
+• seekerDAO: JobSeekerDAO
+• profileDAO: ProfileDAO
+• offeringDAO: OfferingDAO
+• applicationDAO: ApplicationDAO
+Methods:
++ getProfile(seekerID: int): Profile
++ saveProfile(profile: Profile): boolean
++ getRecommendedOfferings(seekerID: int): List<Offering>
++ applyForOffering(seekerID: int, offeringID: int): boolean
++ getApplicationHistory(seekerID: int): List<Application>
++ getMatchScore(seekerID: int, offeringID: int): double
+CompanyController
+Attributes:
+• companyDAO: CompanyDAO
+• offeringDAO: OfferingDAO
+• applicationDAO: ApplicationDAO
+Methods:
++ postOffering(offering: Offering): boolean
++ getPostedOfferings(companyID: int): List<Offering>
++ getApplicants(offeringID: int): List<Application>
++ getRankedApplicants(offeringID: int): List<Application>
++ closeOffering(offeringID: int): boolean
++ getAnalytics(companyID: int): AnalyticsData
+AdminController
+Attributes:
+• userDAO: UserDAO
+• companyDAO: CompanyDAO
+• trendingSkillDAO: TrendingSkillDAO
+Methods:
++ getPendingCompanies(): List<Company>
++ approveCompany(companyID: int): boolean
++ rejectCompany(companyID: int): boolean
++ getAllUsers(): List<User>
++ deactivateUser(userID: int): boolean
++ getTrendingSkills(): List<TrendingSkill>
+OfferingController
+Attributes:
+• offeringDAO: OfferingDAO
+• filterService: IFilterable
+• offeringRanker: IRankable
+Methods:
++ getAllOfferings(): List<Offering>
++ getFilteredOfferings(filter: FilterCandidate): List<Offering>
++ getRankedOfferings(seekerID: int): List<Offering>
++ getOfferingByID(offeringID: int): Offering
++ searchOfferings(keyword: String): List<Offering>
+ApplicationController
+Attributes:
+• applicationDAO: ApplicationDAO
+• applicantRanker: IRankable
+Methods:
++ submitApplication(application: Application): boolean
++ getApplicationsByOffering(offeringID: int): List<Application>
++ getApplicationsBySeeker(seekerID: int): List<Application>
++ rankApplications(offeringID: int): List<Application>
++ updateApplicationStatus(applicationID: int, status: String): boolean
+JobFeedController
+Attributes:
+• jobFeedService: JobFeedService
+• offeringDAO: OfferingDAO
+Methods:
++ refreshFeed(): boolean
++ getLatestFeedOfferings(): List<Offering>
++ getLastFetchedTime(): Date
+🖥️ UI LAYER
+LoginScreen
+Attributes:
+• emailField: TextField
+• passwordField: PasswordField
+• loginButton: Button
+• registerLink: Hyperlink
+• errorLabel: Label
+Methods:
++ initialize(): void
++ handleLogin(): void
++ navigateToRegister(): void
+• showError(message: String): void
+RegisterScreen
+Attributes:
+• nameField: TextField
+• emailField: TextField
+• passwordField: PasswordField
+• roleSelector: ComboBox<String>
+• companyNameField: TextField
+• registerButton: Button
+• errorLabel: Label
+Methods:
++ initialize(): void
++ handleRegister(): void
+• toggleCompanyFields(): void
+• validateInputs(): boolean
+• showError(message: String): void
+JobSeekerDashboard (implements IDashboard)
+Attributes:
+• welcomeLabel: Label
+• jobListView: ListView<Offering>
+• filterPanel: FilterPanel
+• matchScoreBar: ProgressBar
+• trendingSkillsList: ListView<TrendingSkill>
+• applyButton: Button
+• viewProfileButton: Button
+• refreshFeedButton: Button
+Methods:
++ initialize(): void (from IDashboard)
++ loadData(): void (from IDashboard)
++ refreshView(): void (from IDashboard)
++ loadJobListings(): void
++ handleApply(): void
++ handleFilter(): void
++ handleRefreshFeed(): void
++ navigateToProfile(): void
++ displayMatchScore(score: double): void
++ loadTrendingSkills(): void
+CompanyDashboard (implements IDashboard)
+Attributes:
+• postOfferingButton: Button
+• offeringsTable: TableView<Offering>
+• applicantsTable: TableView<Application>
+• analyticsPanel: VBox
+• avgCGPALabel: Label
+• totalApplicantsLabel: Label
+• matchDistributionChart: BarChart
+Methods:
++ initialize(): void (from IDashboard)
++ loadData(): void (from IDashboard)
++ refreshView(): void (from IDashboard)
++ loadOfferings(): void
++ loadApplicants(): void
++ handlePostOffering(): void
++ handleViewCandidates(): void
++ loadAnalytics(): void
++ displayRankedCandidates(): void
+AdminDashboard (implements IDashboard)
+Attributes:
+• pendingCompaniesTable: TableView<Company>
+• approveButton: Button
+• rejectButton: Button
+• allUsersTable: TableView<User>
+• deactivateUserButton: Button
+• trendingSkillsPanel: VBox
+Methods:
++ initialize(): void (from IDashboard)
++ loadData(): void (from IDashboard)
++ refreshView(): void (from IDashboard)
++ loadPendingCompanies(): void
++ handleApproveCompany(): void
++ handleRejectCompany(): void
++ loadAllUsers(): void
++ handleDeactivateUser(): void
++ loadTrendingSkills(): void
+ProfileSetupScreen
+Attributes:
+• educationField: TextField
+• cgpaField: TextField
+• skillsField: TextArea
+• experienceField: TextArea
+• cvUploadButton: Button
+• saveButton: Button
+• cvFileLabel: Label
+• selectedCVPath: String
+Methods:
++ initialize(): void
++ handleCVUpload(): void
++ handleSaveProfile(): void
+• validateInputs(): boolean
++ loadExistingProfile(): void
+• showSuccessMessage(): void
+PostOfferingScreen
+Attributes:
+• titleField: TextField
+• roleField: TextField
+• locationField: TextField
+• descriptionArea: TextArea
+• requiredCGPAField: TextField
+• requiredExperienceField: TextField
+• stipendField: TextField
+• offeringTypeSelector: ComboBox<String>
+• submitButton: Button
+Methods:
++ initialize(): void
++ handleSubmit(): void
+• validateInputs(): boolean
+• showConfirmation(): void
+FilterPanel
+Attributes:
+• locationField: TextField
+• roleField: TextField
+• minCGPAField: TextField
+• minStipendField: TextField
+• experienceSelector: ComboBox<String>
+• applyFilterButton: Button
+• resetButton: Button
+Methods:
++ initialize(): void
++ handleApplyFilter(): void
++ handleReset(): void
++ buildFilterObject(): FilterCandidate
+ViewCandidatesScreen
+Attributes:
+• applicantsTable: TableView<Application>
+• rankColumn: TableColumn
+• nameColumn: TableColumn
+• cgpaColumn: TableColumn
+• matchScoreColumn: TableColumn
+• sortBySelector: ComboBox<String>
+Methods:
++ initialize(): void
++ loadApplicants(offeringID: int): void
++ handleSort(): void
++ handleViewProfile(): void
+TrendingSkillsScreen
+Attributes:
+• skillsBarChart: BarChart<String, Number>
+• skillsTable: TableView<TrendingSkill>
+• refreshButton: Button
+Methods:
++ initialize(): void
++ loadTrendingSkills(): void
++ renderChart(skills: List<TrendingSkill>): void
++ handleRefresh(): void
+📌 What Changed Summary
+What ChangedWhereUser marked abstract, 3 abstract methods addedDomain LayerModelTrainer marked abstract, 2 abstract methods addedDomain LayerAdmin, Company, JobSeeker now override abstract methodsDomain LayerApplicantRanker now also implements IRankableDomain LayerOfferingRanker now also implements IRankableDomain LayerRSSParser now implements IFeedFetchableUtility LayerJobAPIClient now implements IFeedFetchableUtility LayerFilterService now implements IFilterableService LayerUserDAO, JobSeekerDAO, CompanyDAO, ProfileDAO now implement IUserDAODAO LayerJobSeekerDashboard, CompanyDashboard, AdminDashboard now implement IDashboardUI LayerJobFeedService attributes typed as IFeedFetchable instead of concrete classesService LayerAIMatchingService attributes typed as IRankable instead of concrete classesService LayerOfferingController and ApplicationController typed as IRankable and IFilterableController Layer5 new interfaces added as their own layerInterface LayerNow layerwise, tell me ALL the UML relations and things that exist for each class with any other layers' or the same respective layers' classes. If any relation is already done say ( marked ).
+Also show the multiplicity of each relation. Apr 10Orchestrated comprehensive UML relation inventory across architectural layersOrchestrated comprehensive UML relation inventory across architectural layersHere are all UML relations layer by layer, with multiplicity:
+🔧 UTILITY LAYER
+DatabaseConnection
+DatabaseConnection ←— uses —— UserDAO (1 to 1) (marked — dependency)
+DatabaseConnection ←— uses —— JobSeekerDAO (1 to 1) (marked — dependency)
+DatabaseConnection ←— uses —— CompanyDAO (1 to 1) (marked — dependency)
+DatabaseConnection ←— uses —— ProfileDAO (1 to 1) (marked — dependency)
+DatabaseConnection ←— uses —— OfferingDAO (1 to 1) (marked — dependency)
+DatabaseConnection ←— uses —— ApplicationDAO (1 to 1) (marked — dependency)
+DatabaseConnection ←— uses —— TrendingSkillDAO (1 to 1) (marked — dependency)
+Stereotype: «singleton»
+SessionManager
+SessionManager ——— holds ——→ User (1 to 0..1) (marked — directed association)
+SessionManager ←— uses —— AuthController (1 to 1) (marked — dependency)
+SessionManager ←— uses —— JobSeekerController (1 to 1) (dependency)
+SessionManager ←— uses —— CompanyController (1 to 1) (dependency)
+SessionManager ←— uses —— AdminController (1 to 1) (dependency)
+Stereotype: «singleton»
+RSSParser
+RSSParser ——— implements ———▷ IFeedFetchable (marked — realization)
+RSSParser ←— uses —— JobFeedService (1 to 1) (marked — directed association)
+RSSParser ——→ returns ——→ Offering (1 to 0..*) (dependency)
+JobAPIClient
+JobAPIClient ——— implements ———▷ IFeedFetchable (marked — realization)
+JobAPIClient ←— uses —— JobFeedService (1 to 1) (marked — directed association)
+JobAPIClient ——→ returns ——→ Offering (1 to 0..*) (dependency)
+AnalyticsData
+AnalyticsData ←— creates —— CompanyController (1 to 1) (marked — dependency)
+AnalyticsData ——→ used by ——→ CompanyDashboard (1 to 1) (dependency)
+Stereotype: «value object»
+📐 INTERFACE LAYER
+«interface» IFeedFetchable
+IFeedFetchable ◁——— realized by ——— RSSParser (1 to 1) (marked — realization)
+IFeedFetchable ◁——— realized by ——— JobAPIClient (1 to 1) (marked — realization)
+IFeedFetchable ←— depends on —— JobFeedService (1 to 2) (dependency — JobFeedService holds 2 IFeedFetchable references)
+«interface» IRankable
+IRankable ◁——— realized by ——— ApplicantRanker (1 to 1) (marked — realization)
+IRankable ◁——— realized by ——— OfferingRanker (1 to 1) (marked — realization)
+IRankable ←— depends on —— AIMatchingService (1 to 2) (dependency)
+IRankable ←— depends on —— OfferingController (1 to 1) (dependency)
+IRankable ←— depends on —— ApplicationController (1 to 1) (dependency)
+«interface» IFilterable
+IFilterable ◁——— realized by ——— FilterService (1 to 1) (marked — realization)
+IFilterable ←— depends on —— OfferingController (1 to 1) (dependency)
+«interface» IUserDAO
+IUserDAO ◁——— realized by ——— UserDAO (1 to 1) (marked — realization)
+IUserDAO ◁——— realized by ——— JobSeekerDAO (1 to 1) (marked — realization)
+IUserDAO ◁——— realized by ——— CompanyDAO (1 to 1) (marked — realization)
+IUserDAO ◁——— realized by ——— ProfileDAO (1 to 1) (marked — realization)
+«interface» IDashboard
+IDashboard ◁——— realized by ——— JobSeekerDashboard (1 to 1) (marked — realization)
+IDashboard ◁——— realized by ——— CompanyDashboard (1 to 1) (marked — realization)
+IDashboard ◁——— realized by ——— AdminDashboard (1 to 1) (marked — realization)
+🏛️ DOMAIN LAYER
+«abstract» User
+User ◁——— inherited by ——— Admin (marked — generalization)
+User ◁——— inherited by ——— Company (marked — generalization)
+User ◁——— inherited by ——— JobSeeker (marked — generalization)
+User ←— fetches —— UserDAO (0..* to 1) (dependency)
+User ←— holds —— SessionManager (1 to 0..1) (directed association)
+Admin (extends User)
+Admin ———▷ inherits from ——— User (marked — generalization)
+Admin ——→ approves/rejects ——→ Company (1 to 0..*) (directed association)
+Admin ——→ deactivates ——→ User (1 to 0..*) (directed association)
+Admin ←— managed by —— AdminController (1 to 1) (dependency)
+Company (extends User)
+Company ———▷ inherits from ——— User (marked — generalization)
+Company ——◆ posts ——→ Offering (1 to 0..*) (composition — Offerings cannot exist without a Company)
+Company ←— approved by ——→ Admin (0..* to 1) (directed association)
+Company ←— managed by —— CompanyController (1 to 1) (dependency)
+Company ←— fetched by —— CompanyDAO (0..* to 1) (dependency)
+JobSeeker (extends User)
+JobSeeker ———▷ inherits from ——— User (marked — generalization)
+JobSeeker ——◆ has ——→ Profile (1 to 1) (composition — Profile cannot exist without JobSeeker)
+JobSeeker ——◇ submits ——→ Application (1 to 0..*) (aggregation — Application can outlive JobSeeker record)
+JobSeeker ——→ views ——→ Offering (0..* to 0..*) (directed association)
+JobSeeker ——→ uses ——→ FilterCandidate (1 to 0..1) (directed association)
+JobSeeker ←— managed by —— JobSeekerController (1 to 1) (dependency)
+JobSeeker ←— fetched by —— JobSeekerDAO (0..* to 1) (dependency)
+Profile
+Profile ◆——— belongs to ——— JobSeeker (1 to 1) (marked — composition)
+Profile ←— fetched/saved by —— ProfileDAO (0..* to 1) (dependency)
+Profile ←— read by —— AIMatchingService (1 to 1) (dependency)
+Profile ←— read by —— ApplicationController (1 to 1) (dependency)
+Profile ←— read by —— OfferingRanker (1 to 1) (dependency)
+Offering
+Offering ◆——— posted by ——— Company (0..* to 1) (marked — composition)
+Offering ——◇ receives ——→ Application (1 to 0..*) (aggregation)
+Offering ←— filtered by —— FilterCandidate (0..* to 1) (dependency)
+Offering ←— ranked by —— OfferingRanker (0..* to 1) (dependency)
+Offering ←— stored in —— JobFeed (0..* to 1) (directed association)
+Offering ←— fetched by —— OfferingDAO (0..* to 1) (dependency)
+Offering ←— scored by —— AIMatchingService (1 to 0..*) (dependency)
+TrendingSkill ←— derived from ——— Offering (0..* to 0..*) (directed association)
+Application
+Application ◇——— submitted by ——— JobSeeker (0..* to 1) (marked — aggregation)
+Application ◇——— belongs to ——— Offering (0..* to 1) (marked — aggregation)
+Application ←— ranked by —— ApplicantRanker (0..* to 1) (dependency)
+Application ←— managed by —— ApplicationController (0..* to 1) (dependency)
+Application ←— fetched by —— ApplicationDAO (0..* to 1) (dependency)
+FilterCandidate
+FilterCandidate ←— built by —— FilterPanel (1 to 0..1) (directed association)
+FilterCandidate ——→ filters ——→ Offering (1 to 0..*) (marked — directed association)
+FilterCandidate ——→ used by ——→ FilterService (1 to 1) (dependency)
+FilterCandidate ——→ used by ——→ OfferingController (1 to 1) (dependency)
+TrendingSkill
+TrendingSkill ←— derived from ——— Offering (0..* to 0..*) (marked — directed association)
+TrendingSkill ←— computed by —— TrendingSkillService (0..* to 1) (dependency)
+TrendingSkill ←— fetched by —— TrendingSkillDAO (0..* to 1) (dependency)
+TrendingSkill ——→ viewed on ——→ TrendingSkillsScreen (0..* to 1) (directed association)
+TrendingSkill ——→ viewed on ——→ AdminDashboard (0..* to 1) (directed association)
+JobFeed
+JobFeed ——◇ contains ——→ Offering (1 to 0..*) (aggregation)
+JobFeed ←— managed by —— JobFeedService (1 to 1) (dependency)
+JobFeed ←— used by —— ModelTrainer (1 to 1) (directed association)
+JobFeed ←— controlled by —— JobFeedController (1 to 1) (dependency)
+«abstract» ModelTrainer
+ModelTrainer ◁——— inherited by ——— ApplicantRanker (marked — generalization)
+ModelTrainer ◁——— inherited by ——— OfferingRanker (marked — generalization)
+ModelTrainer ——→ uses ——→ JobFeed (1 to 1) (marked — directed association)
+ModelTrainer ←— referenced by —— AIMatchingService (1 to 1) (directed association)
+ApplicantRanker (extends ModelTrainer, implements IRankable)
+ApplicantRanker ———▷ inherits from ——— ModelTrainer (marked — generalization)
+ApplicantRanker ——— implements ———▷ IRankable (marked — realization)
+ApplicantRanker ——→ ranks ——→ Application (1 to 0..*) (marked — directed association)
+ApplicantRanker ←— used by —— ApplicationController (1 to 1) (dependency via IRankable)
+ApplicantRanker ←— used by —— AIMatchingService (1 to 1) (dependency via IRankable)
+OfferingRanker (extends ModelTrainer, implements IRankable)
+OfferingRanker ———▷ inherits from ——— ModelTrainer (marked — generalization)
+OfferingRanker ——— implements ———▷ IRankable (marked — realization)
+OfferingRanker ——→ ranks ——→ Offering (1 to 0..*) (marked — directed association)
+OfferingRanker ——→ uses ——→ Profile (1 to 1) (dependency)
+OfferingRanker ←— used by —— OfferingController (1 to 1) (dependency via IRankable)
+OfferingRanker ←— used by —— AIMatchingService (1 to 1) (dependency via IRankable)
+🗄️ DAO LAYER
+UserDAO (implements IUserDAO)
+UserDAO ——— implements ———▷ IUserDAO (marked — realization)
+UserDAO ——→ depends on ——→ DatabaseConnection (1 to 1) (marked — dependency)
+UserDAO ——→ returns ——→ User (1 to 0..*) (dependency)
+UserDAO ←— used by —— AuthController (1 to 1) (directed association)
+UserDAO ←— used by —— AdminController (1 to 1) (directed association)
+JobSeekerDAO (implements IUserDAO)
+JobSeekerDAO ——— implements ———▷ IUserDAO (marked — realization)
+JobSeekerDAO ——→ depends on ——→ DatabaseConnection (1 to 1) (marked — dependency)
+JobSeekerDAO ——→ returns ——→ JobSeeker (1 to 0..*) (dependency)
+JobSeekerDAO ←— used by —— JobSeekerController (1 to 1) (directed association)
+CompanyDAO (implements IUserDAO)
+CompanyDAO ——— implements ———▷ IUserDAO (marked — realization)
+CompanyDAO ——→ depends on ——→ DatabaseConnection (1 to 1) (marked — dependency)
+CompanyDAO ——→ returns ——→ Company (1 to 0..*) (dependency)
+CompanyDAO ←— used by —— CompanyController (1 to 1) (directed association)
+CompanyDAO ←— used by —— AdminController (1 to 1) (directed association)
+ProfileDAO (implements IUserDAO)
+ProfileDAO ——— implements ———▷ IUserDAO (marked — realization)
+ProfileDAO ——→ depends on ——→ DatabaseConnection (1 to 1) (marked — dependency)
+ProfileDAO ——→ returns ——→ Profile (1 to 0..*) (dependency)
+ProfileDAO ←— used by —— JobSeekerController (1 to 1) (directed association)
+ProfileDAO ←— used by —— ApplicationController (1 to 1) (directed association)
+OfferingDAO
+OfferingDAO ——→ depends on ——→ DatabaseConnection (1 to 1) (marked — dependency)
+OfferingDAO ——→ returns ——→ Offering (1 to 0..*) (dependency)
+OfferingDAO ←— used by —— OfferingController (1 to 1) (directed association)
+OfferingDAO ←— used by —— CompanyController (1 to 1) (directed association)
+OfferingDAO ←— used by —— JobSeekerController (1 to 1) (directed association)
+OfferingDAO ←— used by —— JobFeedService (1 to 1) (directed association)
+OfferingDAO ←— used by —— TrendingSkillService (1 to 1) (directed association)
+OfferingDAO ←— used by —— JobFeedController (1 to 1) (directed association)
+ApplicationDAO
+ApplicationDAO ——→ depends on ——→ DatabaseConnection (1 to 1) (marked — dependency)
+ApplicationDAO ——→ returns ——→ Application (1 to 0..*) (dependency)
+ApplicationDAO ←— used by —— ApplicationController (1 to 1) (directed association)
+ApplicationDAO ←— used by —— CompanyController (1 to 1) (directed association)
+ApplicationDAO ←— used by —— JobSeekerController (1 to 1) (directed association)
+TrendingSkillDAO
+TrendingSkillDAO ——→ depends on ——→ DatabaseConnection (1 to 1) (marked — dependency)
+TrendingSkillDAO ——→ returns ——→ TrendingSkill (1 to 0..*) (dependency)
+TrendingSkillDAO ←— used by —— TrendingSkillService (1 to 1) (directed association)
+TrendingSkillDAO ←— used by —— AdminController (1 to 1) (directed association)
+⚙️ SERVICE LAYER
+JobFeedService
+JobFeedService ——→ uses ——→ IFeedFetchable (1 to 2) (directed association — holds rssParser and jobAPIClient both typed as IFeedFetchable)
+JobFeedService ——→ uses ——→ OfferingDAO (1 to 1) (directed association)
+JobFeedService ——→ produces ——→ Offering (1 to 0..*) (dependency)
+JobFeedService ——→ manages ——→ JobFeed (1 to 1) (directed association)
+JobFeedService ←— used by —— JobFeedController (1 to 1) (directed association)
+FilterService (implements IFilterable)
+FilterService ——— implements ———▷ IFilterable (marked — realization)
+FilterService ——→ filters ——→ Offering (1 to 0..*) (dependency)
+FilterService ——→ uses ——→ FilterCandidate (1 to 1) (dependency)
+FilterService ←— used by —— OfferingController (1 to 1) (directed association via IFilterable)
+AIMatchingService
+AIMatchingService ——→ uses ——→ ModelTrainer (1 to 1) (directed association)
+AIMatchingService ——→ uses ——→ IRankable (1 to 2) (directed association — holds ApplicantRanker and OfferingRanker typed as IRankable)
+AIMatchingService ——→ reads ——→ Profile (1 to 1) (dependency)
+AIMatchingService ——→ reads ——→ Offering (1 to 0..*) (dependency)
+AIMatchingService ——→ returns ——→ Application (1 to 0..*) (dependency)
+AIMatchingService ←— used by —— OfferingController (1 to 1) (directed association)
+AIMatchingService ←— used by —— ApplicationController (1 to 1) (directed association)
+AIMatchingService ←— used by —— JobSeekerController (1 to 1) (directed association)
+TrendingSkillService
+TrendingSkillService ——→ uses ——→ OfferingDAO (1 to 1) (directed association)
+TrendingSkillService ——→ uses ——→ TrendingSkillDAO (1 to 1) (directed association)
+TrendingSkillService ——→ produces ——→ TrendingSkill (1 to 0..*) (dependency)
+TrendingSkillService ——→ reads ——→ Offering (1 to 0..*) (dependency)
+TrendingSkillService ←— used by —— AdminController (1 to 1) (directed association)
+TrendingSkillService ←— used by —— JobFeedController (1 to 1) (directed association)
+🎮 CONTROLLER LAYER
+AuthController (Singleton)
+AuthController ——→ uses ——→ UserDAO (1 to 1) (directed association)
+AuthController ——→ uses ——→ SessionManager (1 to 1) (directed association)
+AuthController ——→ returns ——→ User (1 to 0..1) (dependency)
+AuthController ←— called by —— LoginScreen (1 to 1) (dependency)
+AuthController ←— called by —— RegisterScreen (1 to 1) (dependency)
+Stereotype: «singleton»
+JobSeekerController
+JobSeekerController ——→ uses ——→ JobSeekerDAO (1 to 1) (directed association)
+JobSeekerController ——→ uses ——→ ProfileDAO (1 to 1) (directed association)
+JobSeekerController ——→ uses ——→ OfferingDAO (1 to 1) (directed association)
+JobSeekerController ——→ uses ——→ ApplicationDAO (1 to 1) (directed association)
+JobSeekerController ——→ uses ——→ AIMatchingService (1 to 1) (directed association)
+JobSeekerController ——→ uses ——→ SessionManager (1 to 1) (dependency)
+JobSeekerController ——→ returns ——→ Profile (1 to 0..1) (dependency)
+JobSeekerController ——→ returns ——→ Offering (1 to 0..*) (dependency)
+JobSeekerController ——→ returns ——→ Application (1 to 0..*) (dependency)
+JobSeekerController ←— called by —— JobSeekerDashboard (1 to 1) (dependency)
+JobSeekerController ←— called by —— ProfileSetupScreen (1 to 1) (dependency)
+CompanyController
+CompanyController ——→ uses ——→ CompanyDAO (1 to 1) (directed association)
+CompanyController ——→ uses ——→ OfferingDAO (1 to 1) (directed association)
+CompanyController ——→ uses ——→ ApplicationDAO (1 to 1) (directed association)
+CompanyController ——→ uses ——→ SessionManager (1 to 1) (dependency)
+CompanyController ——→ produces ——→ AnalyticsData (1 to 1) (dependency)
+CompanyController ——→ returns ——→ Offering (1 to 0..*) (dependency)
+CompanyController ——→ returns ——→ Application (1 to 0..*) (dependency)
+CompanyController ←— called by —— CompanyDashboard (1 to 1) (dependency)
+CompanyController ←— called by —— PostOfferingScreen (1 to 1) (dependency)
+CompanyController ←— called by —— ViewCandidatesScreen (1 to 1) (dependency)
+AdminController
+AdminController ——→ uses ——→ UserDAO (1 to 1) (directed association)
+AdminController ——→ uses ——→ CompanyDAO (1 to 1) (directed association)
+AdminController ——→ uses ——→ TrendingSkillDAO (1 to 1) (directed association)
+AdminController ——→ uses ——→ TrendingSkillService (1 to 1) (directed association)
+AdminController ——→ uses ——→ SessionManager (1 to 1) (dependency)
+AdminController ——→ returns ——→ Company (1 to 0..*) (dependency)
+AdminController ——→ returns ——→ User (1 to 0..*) (dependency)
+AdminController ——→ returns ——→ TrendingSkill (1 to 0..*) (dependency)
+AdminController ←— called by —— AdminDashboard (1 to 1) (dependency)
+OfferingController
+OfferingController ——→ uses ——→ OfferingDAO (1 to 1) (directed association)
+OfferingController ——→ uses ——→ IFilterable (1 to 1) (directed association)
+OfferingController ——→ uses ——→ IRankable (1 to 1) (directed association)
+OfferingController ——→ uses ——→ AIMatchingService (1 to 1) (directed association)
+OfferingController ——→ uses ——→ JobFeedController (1 to 1) (directed association)
+OfferingController ——→ returns ——→ Offering (1 to 0..*) (dependency)
+OfferingController ←— called by —— JobSeekerDashboard (1 to 1) (dependency)
+ApplicationController
+ApplicationController ——→ uses ——→ ApplicationDAO (1 to 1) (directed association)
+ApplicationController ——→ uses ——→ ProfileDAO (1 to 1) (directed association)
+ApplicationController ——→ uses ——→ IRankable (1 to 1) (directed association — typed as IRankable, ApplicantRanker injected)
+ApplicationController ——→ uses ——→ AIMatchingService (1 to 1) (directed association)
+ApplicationController ——→ returns ——→ Application (1 to 0..*) (dependency)
+ApplicationController ←— called by —— JobSeekerController (1 to 1) (dependency)
+ApplicationController ←— called by —— CompanyController (1 to 1) (dependency)
+JobFeedController
+JobFeedController ——→ uses ——→ JobFeedService (1 to 1) (directed association)
+JobFeedController ——→ uses ——→ OfferingDAO (1 to 1) (directed association)
+JobFeedController ——→ uses ——→ TrendingSkillService (1 to 1) (directed association)
+JobFeedController ——→ returns ——→ Offering (1 to 0..*) (dependency)
+JobFeedController ←— called by —— OfferingController (1 to 1) (dependency)
+🖥️ UI LAYER
+LoginScreen
+LoginScreen ——→ calls ——→ AuthController (1 to 1) (dependency)
+LoginScreen ——→ navigates to ——→ JobSeekerDashboard (1 to 0..1) (dependency)
+LoginScreen ——→ navigates to ——→ CompanyDashboard (1 to 0..1) (dependency)
+LoginScreen ——→ navigates to ——→ AdminDashboard (1 to 0..1) (dependency)
+LoginScreen ——→ navigates to ——→ RegisterScreen (1 to 1) (dependency)
+RegisterScreen
+RegisterScreen ——→ calls ——→ AuthController (1 to 1) (dependency)
+RegisterScreen ——→ navigates to ——→ LoginScreen (1 to 1) (dependency)
+JobSeekerDashboard (implements IDashboard)
+JobSeekerDashboard ——— implements ———▷ IDashboard (marked — realization)
+JobSeekerDashboard ——◆ contains ——→ FilterPanel (1 to 1) (composition — FilterPanel cannot exist without this dashboard)
+JobSeekerDashboard ——→ calls ——→ OfferingController (1 to 1) (dependency)
+JobSeekerDashboard ——→ calls ——→ JobSeekerController (1 to 1) (dependency)
+JobSeekerDashboard ——→ displays ——→ Offering (1 to 0..*) (dependency)
+JobSeekerDashboard ——→ displays ——→ TrendingSkill (1 to 0..*) (dependency)
+JobSeekerDashboard ——→ navigates to ——→ ProfileSetupScreen (1 to 1) (dependency)
+JobSeekerDashboard ——→ navigates to ——→ TrendingSkillsScreen (1 to 1) (dependency)
+CompanyDashboard (implements IDashboard)
+CompanyDashboard ——— implements ———▷ IDashboard (marked — realization)
+CompanyDashboard ——→ calls ——→ CompanyController (1 to 1) (dependency)
+CompanyDashboard ——→ displays ——→ Offering (1 to 0..*) (dependency)
+CompanyDashboard ——→ displays ——→ Application (1 to 0..*) (dependency)
+CompanyDashboard ——→ displays ——→ AnalyticsData (1 to 1) (dependency)
+CompanyDashboard ——→ navigates to ——→ PostOfferingScreen (1 to 1) (dependency)
+CompanyDashboard ——→ navigates to ——→ ViewCandidatesScreen (1 to 1) (dependency)
+AdminDashboard (implements IDashboard)
+AdminDashboard ——— implements ———▷ IDashboard (marked — realization)
+AdminDashboard ——→ calls ——→ AdminController (1 to 1) (dependency)
+AdminDashboard ——→ displays ——→ Company (1 to 0..*) (dependency)
+AdminDashboard ——→ displays ——→ User (1 to 0..*) (dependency)
+AdminDashboard ——→ displays ——→ TrendingSkill (1 to 0..*) (dependency)
+AdminDashboard ——→ navigates to ——→ TrendingSkillsScreen (1 to 1) (dependency)
+ProfileSetupScreen
+ProfileSetupScreen ——→ calls ——→ JobSeekerController (1 to 1) (dependency)
+ProfileSetupScreen ——→ reads/writes ——→ Profile (1 to 1) (dependency)
+ProfileSetupScreen ←— opened by —— JobSeekerDashboard (1 to 1) (dependency)
+PostOfferingScreen
+PostOfferingScreen ——→ calls ——→ CompanyController (1 to 1) (dependency)
+PostOfferingScreen ——→ creates ——→ Offering (1 to 1) (dependency)
+PostOfferingScreen ←— opened by —— CompanyDashboard (1 to 1) (dependency)
+FilterPanel
+FilterPanel ◆——— composed inside ——— JobSeekerDashboard (1 to 1) (marked — composition)
+FilterPanel ——→ builds ——→ FilterCandidate (1 to 1) (dependency)
+FilterPanel ——→ passes filter to ——→ OfferingController (1 to 1) (dependency via JobSeekerDashboard)
+ViewCandidatesScreen
+ViewCandidatesScreen ——→ calls ——→ CompanyController (1 to 1) (dependency)
+ViewCandidatesScreen ——→ displays ——→ Application (1 to 0..*) (dependency)
+ViewCandidatesScreen ←— opened by —— CompanyDashboard (1 to 1) (dependency)
+TrendingSkillsScreen
+TrendingSkillsScreen ——→ calls ——→ AdminController (1 to 1) (dependency)
+TrendingSkillsScreen ——→ calls ——→ JobSeekerController (1 to 1) (dependency)
+TrendingSkillsScreen ——→ displays ——→ TrendingSkill (1 to 0..*) (dependency)
+TrendingSkillsScreen ←— opened by —— JobSeekerDashboard (1 to 1) (dependency)
+TrendingSkillsScreen ←— opened by —— AdminDashboard (1 to 1) (dependency)
+
